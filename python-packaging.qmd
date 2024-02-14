@@ -1,0 +1,715 @@
+---
+title: Intro to Python Packaging
+author: David Wright
+date: '2023-02-14'
+format:
+  revealjs:
+    theme: white
+    preview-links: true
+    chalkboard: true
+    logo: ./img/ucf.png
+jupyter:
+  jupytext:
+    formats: 'qmd:quarto,ipynb'
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.16.1
+  kernelspec:
+    display_name: home
+    language: python
+    name: home
+---
+
+## Humble Beginnings
+::: {.incremental}
+- Collection of scripts, notebooks, etc.
+- It works well enough that others want to use your code
+- You have collaborators that aren't tech savvy enough to install from source
+- Oh wait, it doesn't work on Windows
+- "Don't use that version, commit `123lmnop` solved the issue"
+:::
+
+## Packaging Code - Goals {auto-animate=true}
+- Create reproducible and reusable code
+- Add structure to projects
+- Bundle compiled code
+- Ease of use
+- Encourage others to use your code
+
+# What Does it Mean to "Package" Python Code? {auto-animate=true}
+1. Organize/create structure
+2. Define the setup/install process for our code
+3. Specify dependencies (and versions!)
+4. (Usually) Make the package available on some package repository
+
+## Organize/Create Structure {auto-animate=true}
+First, let's see an example. I have a text file `zen.txt` that contains the "Zen of Python"
+
+
+> The Zen of Python, by Tim Peters 
+>
+Beautiful is better than ugly.  
+Explicit is better than implicit.  
+Simple is better than complex.  
+...
+
+## Organize/Create Structure (cont.) {auto-animate=true}
+
+```{python}
+#| echo: true
+#| code-line-numbers: '|1-2|4-5|7|9-10|12|13|15'
+#| jupyter: {outputs_hidden: true}
+from string import punctuation
+from collections import Counter
+
+with open("zen.txt") as file:
+        text = file.read()
+
+text = text.lower()
+
+for p in punctuation:
+        text = text.replace(p, "")
+        
+words = text.split()
+word_counts = Counter(words)
+
+word_counts
+```
+
+## Organize/Create Structure (cont.) {auto-animate=true}
+
+```{python}
+#| echo: true
+from string import punctuation
+from collections import Counter
+
+def load_text(input_file):
+        """Load text from a text file and return as a string."""
+        with open(input_file, "r") as file:
+            text = file.read()
+        return text
+
+def clean_text(text):
+        """Lowercase and remove punctuation from a string."""
+        text = text.lower()
+        for p in punctuation:
+            text = text.replace(p, "")
+        return text
+
+def count_words(input_file):
+        """Count unique words in a string."""
+        text = load_text(input_file)
+        words = clean_text(text).split()
+        return Counter(words)
+```
+
+## Organize/create structure (cont.){auto-animate=true}
+
+```{python}
+#| echo: true
+count_words("zen.txt")
+```
+
+## Organize/Create Structure - Directory Structure 
+The "src" layout. We'll talk about the file contents later.
+```
+mypkg
+├── docs                       ┐ Package documentation
+│   └── ...                    │
+├── LICENSE                    │
+├── README.md                  ┘
+├── pyproject.toml             ┐ 
+├── src                        │
+│   └── mypkg                  │ Package source code, metadata,
+│       ├── __init__.py        │ and build instructions 
+│       ├── moduleA.py         │
+│       └── moduleB.py         ┘
+└── tests                      ┐
+    └── ...                    ┘ Package tests
+```
+. . .
+
+```{.python}
+from mypkg.moduleA import count_words
+```
+. . .
+
+This can be generated automatically. See [cookiecutter](https://github.com/cookiecutter/cookiecutter?tab=readme-ov-file){preview-link="false"} and specifically [cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage){preview-link="false"}
+
+
+## What Does it Mean to "Package" Python Code? {auto-animate=true}
+::: {.fragment .fade-in-then-semi-out}
+1. Organize/create structure
+:::
+::: {.fragment .fade-in}
+2. Define the setup/install process for our code
+3. Specify dependencies (and versions!)
+4. (Usually) Make the package available on some package repository
+
+**Backend specific!**
+:::
+
+
+# Python Packaging Tools
+
+## Pip, Virtualenv, and Pipenv 
+- You *could* do everything with `pip` and `virtualenv`, but you will be juggling multiple tools
+- `pipenv` combines the above tools, but it is 
+  - slow
+  - uses its own special files for dependencies
+  - and doesn't use the standard `pyproject.toml` file for project metadata, dependencies, etc.
+
+## Conda 
+::: {.fragment .fade-in}
+- Just don't 
+:::
+
+::: {.fragment .fade-in}
+- Conda is great at what it does, but it is not the right tool for packaging
+:::
+
+## Poetry
+- [Poetry](https://python-poetry.org/) is my personal favorite and seems to be the most popular choice
+- It handles dependencies, virtual environments, builds, and publishing
+- The user interface is well designed
+
+## Poetry (cont.) {.smaller}
+- Start a new project with Poetry
+```{.bash}
+poetry new poetry-demo
+```
+- This will give you the following directory structure
+```
+poetry-demo
+├── pyproject.toml
+├── README.md
+├── poetry_demo
+│   └── __init__.py
+└── tests
+    └── __init__.py
+```
+- A new `virtualenv` will be created for the project
+
+- Add dependencies like: 
+```{.bash}
+poetry add numpy
+```
+::: aside
+`__init__.py` tells Python that this is a package. It can be empty, but usually is used for setting globals like `__version__`
+:::
+## Poetry (cont.) {.smaller}
+- Run a file inside of the `virtualenv` with your package installed
+```{.bash}
+poetry run myfile.py
+```
+- Get an interactive shell **inside** of the project's `virtualenv`
+```{.bash}
+poetry shell
+```
+- After you've added dependencies, Poetry will create a `poetry.lock` file that locks each package to a specific version that satisfies the constraints you've set
+- Ready to upload to PyPI?
+```{.bash}
+poetry publish  # Builds _and_ uploads for you
+```
+
+
+## Builds {.smaller}
+"Building" a Python package will produce two types of files under `dist/` in your project directory:
+
+```
+dist
+├── ptarcade-0.1.6-py3-none-any.whl
+└── ptarcade-0.1.6.tar.gz
+```
+- Sdist (Source Distribution)
+  - A gzipped tar archive (.tar.gz)
+  - All source files
+  - Cross-platform
+- Wheel (Compiled Package) 
+  - Extensions compiled and Python files byte-compiled
+  - Possibly not cross-platform
+  
+# `pyproject.toml`
+
+## `pyproject.toml` Purpose
+- Common configuration file for many Python packaging tools
+- Contains metadata, build system, dependencies, configuration for development tools, etc.
+- Written in `toml`: Tom's Obvious Minimal Language
+
+## `pyproject.toml` Example
+From [PTArcade](https://github.com/andrea-mitridate/PTArcade)
+```{.toml}
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+name = "PTArcade"
+version = "0.1.6"
+description = "PTArcade provides an interface to the ENTERPRISE analysis suite and allows for simple implementation of new-physics searches in PTA data."
+readme = "README.md"
+authors = ["Andrea Mitridate <andrea.mitridate@nanograv.org>",]
+keywords = ["ptarcade"]
+repository = "https://github.com/andrea-mitridate/PTArcade"
+documentation = "https://andrea-mitridate.github.io/PTArcade/"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[tool.poetry.scripts]
+ptarcade = "ptarcade.sampler:main"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/andrea-mitridate/PTArcade/issues"
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.11"
+ptmcmcsampler = "^2.1.1"
+mpi4py = "^3.1.4"
+h5py = "^3.8.0"
+enterprise-pulsar = "^3.3.3"
+enterprise-extensions = "^2.4.2"
+scikit-sparse = "^0.4.12"
+natpy = "^0.1.1"
+numpy = "^1.24.3"
+pandas = "^2.0.2"
+pyarrow = "^12.0.0"
+getdist = "^1.4.3"
+astroml = "^1.0.2.post1"
+scipy = "^1.10.1"
+setuptools = "^67.8.0"
+encor = "^1.1.2"
+llvmlite = "^0.40.0"
+ceffyl = "~1.30.4"
+numba = "^0.57.0"
+tables = "^3.8.0"
+rich = {extras = ["jupyter"], version = "^13.4.2"}
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+ruff = "^0.0.270"
+black = "^23.3.0"
+ipython = "^8.14.0"
+dask = {extras = ["complete"], version = "^2023.12.0"}
+bokeh = ">=2.4.2,<3.0.dev0 || >=3.1.dev0"
+graphviz = "^0.20.1"
+zarr = "^2.16.1"
+asyncssh = "^2.14.1"
+distributed = "^2023.12.0"
+jax = {extras = ["cuda12-pip"], version = "^0.4.23", source = "jax"}
+python-lsp-server = {extras = ["all"], version = "^1.9.0"}
+jupyterlab = "^4.0.11"
+
+
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = {git = "git@github.com:andrea-mitridate/mkdocs-material.git", rev="master"}
+mkdocstrings = {extras = ["python"], version = "^0.22.0"}
+mkdocs-gen-files = "^0.5.0"
+mkdocs-literate-nav = "^0.6.0"
+
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+
+[[tool.poetry.source]]
+name = "jorenham/jax_pep503"
+url = "https://jorenham.github.io/jax_pep503/"
+priority = "supplemental"
+
+
+[[tool.poetry.source]]
+name = "jax"
+url = "https://storage.googleapis.com/jax-releases/jax_releases.html"
+priority = "primary"
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.ruff]
+ignore = ["Q000", "ANN", "E402"]
+line-length = 120
+target-version = "py310"
+fix = true
+unfixable = []
+select = [
+  # pyflakes
+  "F",
+  # pycodestyle
+  "E", "W",
+  # mccabe (complexity)
+  "C90",
+  # naming
+  "N",
+  # docstyles
+  "D",
+  # pyupgrade
+  "UP",
+  # flake8-2020
+  "YTT",
+  # blind except
+  "BLE",
+  # boolean traps
+  "FBT",
+  # flake8-bugbear
+  "B",
+  # catch overshadowing builtins
+  "A",
+  # comma errors
+  "COM",
+  # list comprehension help
+  "C4",
+  # help with datetime
+  "DTZ",
+  # error messages
+  "EM",
+  # shebangs
+  "EXE",
+  # imports
+  "ICN",
+  # logging
+  "G",
+  # namespacing help for packages
+  "INP",
+  # pytest
+  "PT",
+  # raise correctly
+  "RSE",
+  # returns
+  "RET",
+  # simplify code
+  "SIM",
+  # unused arguments
+  "ARG",
+  # use pathlib
+  "PTH",
+  # catch commented out code
+  "ERA",
+  # pandas help
+  "PD",
+  # flake8-quotes
+  "Q",
+  # flake8-debugger
+  "T10",
+  # flake8-gettext
+  "INT",
+  # pylint
+  "PLC", "PLE", "PLR", "PLW",
+  # try except
+  "TRY",
+  # convert to f strings
+  "FLY",
+  # numpy things
+  "NPY",
+  # misc lints
+  "PIE",
+  # flake8-pyi
+  "PYI",
+  # tidy imports
+  "TID",
+  # implicit string concatenation
+  "ISC",
+  # type-checking imports
+  #"TCH",
+  # pygrep-hooks
+  #"PGH"
+]
+
+exclude = [
+  "doc/sphinxext/*.py",
+  "doc/build/*.py",
+  "doc/temp/*.py",
+  ".eggs/*.py",
+]
+```
+
+# PyPI
+:::: {.columns}
+
+::: {.column width="70%"}
+- [PyPI](https://pypi.org/) is the <u>Py</u>thon <u>P</u>ackage <u>I</u>ndex
+- You'll need to register for an account
+- There is also [TestPyPI](https://test.pypi.org/), a version of PyPI to test your builds and uploads
+  - These packages are routinely deleted
+:::
+
+::: {.column width="30%"}
+![](https://upload.wikimedia.org/wikipedia/commons/6/64/PyPI_logo.svg)
+:::
+
+::::
+
+## Uploading to PyPI
+:::: {.columns}
+
+::: {.column width="70%"}
+- You'll need to authenticate with your credentials somehow
+  - An API token is the easiest and most secure way
+- Poetry can store it for you
+```{.bash}
+poetry config pypi-token.pypi your-api-token
+```
+- Now, when you publish with Poetry it will use your token to authenticate with PyPI
+::: 
+::: {.column width="30%"}
+![](https://deved-images.nyc3.cdn.digitaloceanspaces.com/poetry-pypi/pypi-account-settings.png)
+![](https://deved-images.nyc3.cdn.digitaloceanspaces.com/poetry-pypi/pypi-api-tokens.png)
+![](https://deved-images.nyc3.cdn.digitaloceanspaces.com/poetry-pypi/pypi-token-creation.png)
+:::
+::::
+
+# Conda-Forge 
+![](https://conda-forge.org/img/anvil-light.svg){.nostretch fig-align="center" width="500px"}
+
+## What is Conda-Forge? {.smaller}
+:::: {.columns}
+::: {.column width="40%"}
+[Conda-Forge](https://conda-forge.org/): "Community-led recipes, infrastructure and distributions for conda."
+
+- Has CI/CD pipelines hosted on Azure for Windows, Linux, and OSX (x86 and ARM!)
+  - Free for non-corporate use
+  - Will automatically build your package for every supported Python version and platform
+- Users install from conda as usual, specifying the channel with `-c conda-forge` if necessary
+:::
+::: {.column width="60%"}
+![](./img/conda-forge-website.png)
+:::
+::::
+## How to Submit a Package to Conda-Forge
+They have detailed documentation [here](https://conda-forge.org/docs/maintainer/adding_pkgs.html)
+
+1. Fork [staged-recipes](https://github.com/conda-forge/staged-recipes){preview-link="false"}
+2. Make a new branch (name it after your package)
+3. Create a recipe YAML file for your package
+4. Make a PR to the main branch
+
+::: {.fragment .fade-in}
+- Luckily, we can make (3) very easy...
+:::
+
+## Conda-Forge Recipes with `grayskull` {.smaller}
+Because we've already created a PyPI package, we can easily create a conda-forge recipe with [grayskull](https://github.com/marcelotrevisani/grayskull){preview-link="false"}
+
+:::: {.columns}
+::: {.column width="50%"}
+```{.bash}
+grayskull pypi <your-package>
+```
+- `grayskull` will pull the package and metadata needed to build the recipe file
+- You can tweak the recipe to skip certain Python versions or platforms, add conda-specific dependencies, etc.
+:::
+::: {.column width="50%"}
+![](https://github.com/conda/grayskull/raw/main/images/cli_example_grayskull.gif)
+:::
+::::
+---
+Example recipe
+```{.yml}
+{% set name = "ptarcade" %}
+{% set version = "1.1.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/ptarcade-{{ version }}.tar.gz
+  sha256: 4f80d5cf0008a593c6c240c52fbd5edadeaa89a43824f8c593715cc4426af1a6
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+
+requirements:
+  host:
+    - python >=3.9,<3.11
+    - poetry-core
+    - pip
+  run:
+    - python >=3.9,<3.11
+    - ptmcmcsampler >=2.1.1,<3.0.0
+    - mpi4py >=3.1.4,<4.0.0
+    - h5py >=3.8.0,<4.0.0
+    - enterprise-pulsar >=3.3.2,<4.0.0
+    - enterprise_extensions >=2.4.2,<3.0.0
+    - scikit-sparse >=0.4.12,<1.0.0
+    - natpy >=0.1.1,<1.0.0
+    - numpy >=1.20.0,<2.0.0
+    - pandas >=2.0.2,<3.0.0
+    - getdist >=1.4.1,<2.0.0
+    - astroml >=1.0.2,<2.0.0
+    - scipy >=1.10.1,<2.0.0
+    - encor >=1.1.2,<2.0.0
+    - ceffyl >=1.26.0,<2.0.0
+    - pytables >=3.8.0,<4.0.0
+    - rich >=13.4.2,<14.0.0
+
+test:
+  imports:
+    - ptarcade
+
+about:
+  home: https://andrea-mitridate.github.io/PTArcade/
+  summary: PTArcade provides an interface to the ENTERPRISE analysis suite and allows for simple implementation of new-physics searches in PTA data.
+  license: MIT
+  license_file: LICENSE
+
+extra:
+  recipe-maintainers:
+    - davecwright3
+    - andrea-mitridate
+```
+
+## Maintaining a Conda-Forge package {.scrollable}
+- After your PR is approved, you'll get admin access to a repo underneath the conda-forge GH organization called 
+  - **conda-forge/\<your-package\>-feedstock**
+- If you want to change anything about the recipe, fork the feedstock and open a PR
+- Whenever you update the package on PyPI, a bot will open a PR on your feedstock
+
+::: {.panel-tabset}
+
+### PR
+![](./img/feedstock.png)
+
+### Checks
+![](./img/feedstock-ci.png)
+
+:::
+
+# CI/CD with GitHub Actions
+![](https://cdn.invicti.com/statics/img/drive/h2jfrvzrbyh1yff2n3wfu2hkqqps6x_uvqo.png){.nostretch fig-align="center" width="600px"}
+
+Let GitHub build and publish your code
+
+## GitHub Actions
+- Automation platform defined by `workflows`
+  - These are YAML files that have specific jobs triggered by user-specified events
+- Plugs in to everything you'd expect on GitHub: releases, PR's, GitHub pages, etc.
+- Has OSX, Linux, and Windows "runners" (the platform the jobs will run on)
+- Workflows can be as simple as a shell command
+
+## Publishing to PyPI {.scrollable}
+- We need a way to manage our credentials
+  - Luckily, last year PyPI added [trusted publishers](https://docs.pypi.org/trusted-publishers/)
+- We can add our GitHub repo as a "trusted publisher" from our PyPI account
+
+![](./img/trusted-publisher.png){.nostretch fig-align="center" width="600px"}
+
+## The Publishing Workflow - Pure Python
+[`PTArcade/.github/workflows/publish.yml`](https://github.com/andrea-mitridate/PTArcade/blob/master/.github/workflows/publish.yml)
+```{.yml}
+name: Publish
+on:
+  release:
+    types: [published]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: 3.11
+
+      - run: |
+          pip install poetry
+          poetry build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./dist
+
+  pypi-publish:
+    needs: ['build']
+    environment: 'publish'
+
+    name: upload release to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v3
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages_dir: artifact/
+```
+
+## The Publishing Workflow - Compiled Extensions
+[`Ceffyl/.github/workflows/publish.yml`](https://github.com/astrolamb/ceffyl/blob/main/.github/workflows/publish.yml)
+```{.yml}
+name: Publish
+on:
+  release:
+    types: [published]
+jobs:
+  build:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v3
+        with:
+          python-version: 3.11
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.16.2
+        env:
+          # Skip CPython 3.6 and CPython 3.7
+          CIBW_SKIP: cp36-* cp37-* pp*
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
+  pypi-publish:
+    needs: ['build']
+    environment: 'publish'
+
+    name: upload release to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v3
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages_dir: artifact/
+```
+## Bonus: Publishing Documentation with GitHub Actions
+[Sphinx](https://www.sphinx-doc.org/en/master/) is the most popular documentation tool for Python, but I'd encourage you to check out [MkDocs](https://www.mkdocs.org/)
+
+- Example: [PTArcade docs](https://andrea-mitridate.github.io/PTArcade/)
+- MkDocs comes with GitHub actions + pages integration
+```{.bash}
+mkdocs gh-deploy
+# Or using poetry
+poetry run mkdocs gh-deploy
+```
+
