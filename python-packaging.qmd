@@ -7,7 +7,7 @@ format:
     theme: white
     preview-links: true
     chalkboard: true
-    logo: ./img/ucf.png
+    logo: ./img/osu-logo.png
 jupyter:
   jupytext:
     formats: 'qmd:quarto,ipynb'
@@ -712,4 +712,3 @@ mkdocs gh-deploy
 # Or using poetry
 poetry run mkdocs gh-deploy
 ```
-
