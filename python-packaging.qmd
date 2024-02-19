@@ -167,7 +167,7 @@ This can be generated automatically. See [cookiecutter](https://github.com/cooki
 :::
 
 ::: {.fragment .fade-in}
-- Conda is great at what it does, but it is not the right tool for packaging
+- Conda is great at what it does, but it is (usually) not the right tool for packaging^[If you are building a conda-only package or need multiple non-Python dependencies (e.g. many ML packages) this may not apply to you.]
 :::
 
 ## Poetry
